@@ -1,0 +1,6 @@
+*.json
+*.txt
+fb_cookies.txt
+output.json
+__pycache__/
+*.pyc
