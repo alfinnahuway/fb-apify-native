@@ -35,13 +35,16 @@ PROXY_PORTS = [10000, 10001, 10002, 10003, 10004, 10005, 10006, 10007]
 
 # Apify
 APIFY_KEY = os.environ.get("APIFY_API_KEYS", "")
-APIFY_ACTOR = "scrapier/facebook-posts-search-scraper"
+APIFY_ACTOR = "apify/facebook-posts-scraper"  # Official actor — more reliable than scrapier
 
 
 # ─── PHASE 1: APIFY SEARCH ────────────────────────────────────────────────────
 
 def apify_search(keyword, max_posts=10):
-    """Search Facebook posts by keyword via Apify."""
+    """Search Facebook posts via Apify official actor.
+    
+    Uses startUrls with search URL format: facebook.com/search/posts?q=keyword
+    """
     from apify_client import ApifyClient
 
     if not APIFY_KEY:
@@ -53,9 +56,65 @@ def apify_search(keyword, max_posts=10):
     print(f"  Keyword: '{keyword}'")
     print(f"  Max posts: {max_posts}")
 
+    # Try 2 approaches:
+    # 1. apify/facebook-posts-scraper with search URL
+    # 2. scrapier/facebook-posts-search-scraper with searchQueries (fallback)
+    
+    # Approach 1: Official actor with search URL
+    search_url = f"https://www.facebook.com/search/posts/?q={keyword.replace(' ', '%20')}"
     run_input = {
-        "searchQueries": [keyword],
-        "maxResults": max_posts,
+        "startUrls": [{"url": search_url}],
+        "resultsLimit": max_posts,
+    }
+
+    try:
+        run = client.actor(APIFY_ACTOR).call(run_input=run_input, timeout_secs=120)
+        if run and run.get("status") == "SUCCEEDED":
+            results = list(client.dataset(run.get("defaultDatasetId")).iterate_items())
+            # Filter out non-post results (search page itself)
+            post_results = [r for r in results if r.get("postId") or r.get("postFacebookId")]
+            if post_results:
+                print(f"  ✅ Found {len(post_results)} posts via Apify (official)")
+                return post_results
+            else:
+                print(f"  ⚠️ Got {len(results)} results but no valid posts, trying fallback")
+    except Exception as e:
+        print(f"  ⚠️ Official actor error: {e}")
+
+    # Approach 2: Fallback to scrapier actor
+    print(f"  Fallback: scrapier/facebook-posts-search-scraper")
+    try:
+        run = client.actor("scrapier/facebook-posts-search-scraper").call(
+            run_input={"searchQueries": [keyword], "maxResults": max_posts},
+            timeout_secs=120,
+        )
+        if run and run.get("status") == "SUCCEEDED":
+            results = list(client.dataset(run.get("defaultDatasetId")).iterate_items())
+            print(f"  ✅ Found {len(results)} posts via Apify (scrapier)")
+            return results
+    except Exception as e2:
+        print(f"  ❌ Fallback also failed: {e2}")
+
+    return []
+
+
+def apify_account_posts(account, max_posts=10):
+    """Get posts from a Facebook account/page via Apify official actor."""
+    from apify_client import ApifyClient
+
+    if not APIFY_KEY:
+        print("❌ No APIFY_API_KEYS set")
+        return []
+
+    client = ApifyClient(APIFY_KEY)
+    print(f"  Running Apify actor: {APIFY_ACTOR}")
+    print(f"  Account: '{account}'")
+    print(f"  Max posts: {max_posts}")
+
+    profile_url = f"https://www.facebook.com/{account}"
+    run_input = {
+        "startUrls": [{"url": profile_url}],
+        "resultsLimit": max_posts,
     }
 
     try:
@@ -432,27 +491,40 @@ def scrape_post_comments(driver, post, max_comments=100):
 
 def main():
     parser = argparse.ArgumentParser(description="Facebook Apify + Native Comment Scraper")
-    parser.add_argument("--keyword", required=True, help="Search keyword")
+    parser.add_argument("--keyword", help="Search keyword (uses search mode)")
+    parser.add_argument("--account", help="Facebook account/page name (uses account mode)")
     parser.add_argument("--max-posts", type=int, default=10, help="Max posts to find")
     parser.add_argument("--max-comments", type=int, default=100, help="Max comments per post")
     parser.add_argument("--output", default="output.json", help="Output JSON file")
     args = parser.parse_args()
 
+    if not args.keyword and not args.account:
+        print("❌ Need --keyword or --account")
+        sys.exit(1)
+
+    mode = "search" if args.keyword else "account"
+    target = args.keyword or args.account
+
     print("=" * 60)
     print("  FACEBOOK APIFY + NATIVE SCRAPER")
     print("  Apify search → Native comment scraping with cookies")
     print("=" * 60)
-    print(f"  Keyword: {args.keyword}")
+    print(f"  Mode: {mode}")
+    print(f"  Target: {target}")
     print(f"  Max posts: {args.max_posts}")
     print(f"  Max comments: {args.max_comments}")
     print(f"  Output: {args.output}")
 
-    # ── PHASE 1: APIFY SEARCH ──────────────────────────────────────────────
+    # ── PHASE 1: APIFY ─────────────────────────────────────────────────────
     print("\n" + "═" * 60)
-    print("  PHASE 1: APIFY SEARCH")
+    print("  PHASE 1: APIFY POST DISCOVERY")
     print("═" * 60)
 
-    raw_posts = apify_search(args.keyword, args.max_posts)
+    if args.account:
+        raw_posts = apify_account_posts(args.account, args.max_posts)
+    else:
+        raw_posts = apify_search(args.keyword, args.max_posts)
+
     if not raw_posts:
         print("❌ No posts found. Apify might be down.")
         sys.exit(1)

@@ -1,0 +1,11 @@
+# Netscape HTTP Cookie File
+.facebook.com	TRUE	/	TRUE	0	presence	C%7B%22t3%22%3A%5B%5D%2C%22utc3%22%3A1787836670772%2C%22v%22%3A1%7D
+.facebook.com	TRUE	/	TRUE	1788441470	dpr	1.25
+.facebook.com	TRUE	/	TRUE	1822393869	sb	KO8_algdhanM9NUXcufnREc1
+.facebook.com	TRUE	/	TRUE	1817134865	datr	E-8_arSJqcRbaxGCYyiF9zZr
+.facebook.com	TRUE	/	TRUE	1822220263	ps_l	1
+.facebook.com	TRUE	/	TRUE	1788441470	wd	1536x776
+.facebook.com	TRUE	/	TRUE	1819372944	c_user	61593587799153
+.facebook.com	TRUE	/	TRUE	1822220263	ps_n	1
+.facebook.com	TRUE	/	TRUE	1795612944	fr	1spBLqid6y0JIjEb1.AWeYggM6itBuAB4HbwfsqSnDfRAcDsRJBU9ZkHpCD_VpD07WCWI.BqkDoQ..AAA.0.0.BqkDoQ.AWfVaA8oPfDBeZRA92hg-Gnpjnk
+.facebook.com	TRUE	/	TRUE	1819372944	xs	13%3A3KEcLpVYZnm1-A%3A2%3A1787833868%3A-1%3A-1%3A%3AAcxBgA0b9uLsB5uYVUMYhjg3kwSza-1bmVUWkWjYSw
